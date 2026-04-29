@@ -47,3 +47,8 @@ async def convert(file: UploadFile = File(...)):
         # Cleanup (optional)
         if os.path.exists(image_name):
             os.remove(image_name)
+
+
+import pytesseract
+
+pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
