@@ -1,7 +1,12 @@
 fastapi
-uvicorn
-pytesseract
+uvicorn[standard]
+python-multipart
 opencv-python-headless
+numpy
 pandas
 openpyxl
-python-multipart
+pytesseract
+Pillow
+# optional — adds ~1 GB but unlocks the fallback engine:
+paddleocr
+paddlepaddle
