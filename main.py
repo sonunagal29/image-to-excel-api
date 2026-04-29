@@ -1,10 +1,14 @@
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 import pytesseract
 import cv2
 import pandas as pd
 import uuid
 import os
+import io
+
+# 🔥 IMPORTANT: tesseract path (top me hi hona chahiye)
+pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 
 app = FastAPI()
 
@@ -15,9 +19,8 @@ def home():
 @app.post("/convert")
 async def convert(file: UploadFile = File(...)):
     try:
-        # Unique filenames
+        # Unique image filename
         image_name = f"input_{uuid.uuid4()}.png"
-        output_name = f"output_{uuid.uuid4()}.xlsx"
 
         # Save uploaded image
         with open(image_name, "wb") as f:
@@ -26,29 +29,33 @@ async def convert(file: UploadFile = File(...)):
         # Read image
         img = cv2.imread(image_name)
 
-        # Convert to grayscale (better OCR)
+        # Preprocessing (important)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # OCR extract
         text = pytesseract.image_to_string(gray)
 
-        # Convert text lines → Excel
-        lines = [line.strip() for line in text.split("\n") if line.strip() != ""]
+        # Convert text → list
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
 
+        # DataFrame
         df = pd.DataFrame(lines, columns=["Extracted Data"])
-        df.to_excel(output_name, index=False)
 
-        return FileResponse(output_name, filename="result.xlsx")
+        # 🔥 Save to memory (NO file corruption)
+        output = io.BytesIO()
+        df.to_excel(output, index=False)
+        output.seek(0)
+
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=result.xlsx"}
+        )
 
     except Exception as e:
         return {"error": str(e)}
 
     finally:
-        # Cleanup (optional)
+        # Cleanup temp image
         if os.path.exists(image_name):
             os.remove(image_name)
-
-
-import pytesseract
-
-pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
